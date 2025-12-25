@@ -1,5 +1,3 @@
-# Nexus-Platform
-
 import os
 from fastapi import FastAPI, Request, Header, HTTPException
 from openai import OpenAI
@@ -63,3 +61,37 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
         }).execute()
     
     return {"status": "success"}
+
+
+import os
+import stripe
+from supabase import create_client
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+
+def sync_vault():
+    # Retrieve balance from Stripe
+    balance = stripe.Balance.retrieve()
+    available = balance['available'][0]['amount'] / 100
+    
+    # Update Supabase Vault
+    supabase.table("vault_stats").upsert({
+        "id": 1,
+        "retrievable_cash": available,
+        "last_sync": "now()"
+    }).execute()
+    print(f"Vault Synced: ${available} available for retrieval.")
+
+if __name__ == "__main__":
+    sync_vault()
+
+DEPENDENCIES
+fastapi
+uvicorn
+openai
+fpdf
+supabase
+stripe
+python-multipart
+
